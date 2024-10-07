@@ -1,0 +1,71 @@
+# Example YAML 1.2 file
+
+# --- Document start
+---
+# Scalar types
+string: "Hello, World"
+integer: 12345
+float: 3.14159
+boolean_true: true
+boolean_false: false
+null_value: null
+multiline_string: |
+  This is a
+  multiline string.
+folded_string: >
+  This is a folded
+  string with
+  newlines replaced by spaces.
+
+# Sequences (lists)
+shopping_list:
+  - apples
+  - oranges
+  - bananas
+
+# Sequences with inline notation
+numbers: [1, 2, 3, 4, 5]
+
+# Mappings (dictionaries)
+person:
+  name: John Doe
+  age: 30
+  email: john.doe@example.com
+  address:
+    street: 123 Main St
+    city: Anytown
+    zip: 12345
+
+# Nested mappings with anchors and references
+defaults: &defaults
+  user: guest
+  permissions: read-only
+
+user1:
+  <<: *defaults
+  user: admin
+  permissions: read-write
+
+user2:
+  <<: *defaults
+
+# Complex keys
+? [home, work]
+  : phone_number: 555-1234
+
+# Multiple documents in a single file
+---
+document2:
+  content: "This is another document"
+---
+document3:
+  content: "This is yet another document"
+# ... Document end
+
+# YAML tags (explicit typing)
+binary_data: !!binary |
+  R0lGODlhAQABAIAAAAUEBAg=
+timestamp: !!timestamp 2024-09-08T12:34:56Z
+set: !!set
+  ? item1
+  ? item2
