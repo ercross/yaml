@@ -7,12 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-type (
-	tokenType int8
-	dataType  int8
-)
-
-type TokenType int
+type tokenType int8
 
 const (
 	TokenTypeUnknown tokenType = iota
@@ -41,6 +36,7 @@ const (
 
 const (
 	dash                 rune = '-'
+	indentation               = ' '
 	commentStarter            = '#'
 	newline                   = '\n'
 	colon                     = ':'
@@ -92,6 +88,10 @@ type location struct {
 	column int
 }
 
+func (l location) String() string {
+	return fmt.Sprintf("line(%d): column(%d)", l.line, l.column)
+}
+
 func newToken(typ tokenType, value string, line, column int) token {
 	return token{
 		Type:  typ,
@@ -116,10 +116,10 @@ func tokenizeLine(line string, lineNumber int) ([]token, error) {
 
 		// check for indentation
 		r, runeSize := utf8.DecodeRune(rawLine)
-		if column == 0 && unicode.IsSpace(r) {
+		if column == 0 && r == indentation {
 			var b strings.Builder
 
-			for unicode.IsSpace(r) {
+			for r == indentation {
 				rawLine = rawLine[runeSize:]
 				b.WriteString(" ")
 				column++
