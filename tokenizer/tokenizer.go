@@ -48,59 +48,22 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 	}
 
 	column := 1
-
 	rawLine := []byte(line)
+
 	for len(rawLine) > 0 {
 
 		r, runeSize := utf8.DecodeRune(rawLine)
 
 		if column == 1 {
 			if isWhiteSpaceCharacter(r) {
-				if t.indentationCharacter == 0 {
-					t.indentationCharacter = r
-				}
-				if t.indentationCharacter != r {
-					return nil, fmt.Errorf("inconsistent indentation character found at %d:%d", lineNumber, column)
-				}
-
-				// build indentation
-				var b strings.Builder
-				for r == whitespace {
-					rawLine = rawLine[runeSize:]
-					b.WriteString(" ")
-					column++
-					r, runeSize = utf8.DecodeRune(rawLine)
-				}
-				if b.Len() > 0 {
-					tokens = append(tokens, NewToken(TokenTypeIndentation, b.String(), lineNumber, column))
+				if err = t.handleWhitespace(tokens, rawLine, &column, lineNumber); err != nil {
+					return tokens, err
 				}
 				continue
 			}
 
-			if r == period || r == dash {
-				allowedLength := 3
-				if len(rawLine) != allowedLength {
-					return nil, fmt.Errorf("document start or end tokens must be on a separate line")
-				}
-
-				t.complexTokenBuilder.startBuilding(r, lineNumber, column)
-				for len(rawLine) > 0 {
-					if r != t.complexTokenBuilder.endBuildOnNext {
-						return nil, fmt.Errorf("unexpected rune %v", string(r))
-					}
-					t.complexTokenBuilder.builder.WriteString(string(r))
-					rawLine = rawLine[runeSize:]
-					r, runeSize = utf8.DecodeRune(rawLine)
-					column++
-				}
-
-				tt := TokenTypeDocumentEnd
-				if r == dash {
-					tt = TokenTypeDocumentStart
-				}
-				tokens = append(tokens, NewToken(tt, t.complexTokenBuilder.builder.String(), lineNumber, column))
-				t.complexTokenBuilder.endBuild()
-				return
+			if (r == period || r == dash) && len(tokens) == 0 {
+				return t.handleDocumentStarters(rawLine, lineNumber)
 			}
 		}
 
@@ -163,7 +126,7 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 				column++
 				r, runeSize = utf8.DecodeRune(rawLine)
 				if r == utf8.RuneError && runeSize == 1 {
-					panic(fmt.Errorf("invalid character on line %d; column %d", lineNumber, column))
+					return nil, fmt.Errorf("invalid character on line %d; column %d", lineNumber, column)
 				}
 			}
 
@@ -200,7 +163,7 @@ func (t complexTokenBuilder) isEscapeSequence(r rune) bool {
 		return false
 	}
 
-	return r == doubleQuote && strings.HasSuffix(t.builder.String(), "\\")
+	return r == doubleQuote && strings.HasSuffix(t.builder.String(), `\`)
 }
 
 func isWhiteSpaceCharacter(r rune) bool {
@@ -218,4 +181,56 @@ func (t complexTokenBuilder) canEndBuilding(rawLine []byte) bool {
 		return true
 	}
 	return false
+}
+
+func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]Token, error) {
+	column := 1
+	allowedLength := 3
+	if len(rawLine) != allowedLength {
+		return nil, fmt.Errorf("document start [---] or end [...] tokens must be alone on a separate line")
+	}
+	r, runeSize := utf8.DecodeRune(rawLine)
+
+	t.complexTokenBuilder.startBuilding(r, lineNumber, column)
+	for len(rawLine) > 0 {
+		if r != t.complexTokenBuilder.endBuildOnNext {
+			return nil, fmt.Errorf("unexpected rune %v", string(r))
+		}
+		t.complexTokenBuilder.builder.WriteString(string(r))
+		rawLine = rawLine[runeSize:]
+		r, runeSize = utf8.DecodeRune(rawLine)
+		column++
+	}
+
+	tt := TokenTypeDocumentEnd
+	if r == dash {
+		tt = TokenTypeDocumentStart
+	}
+	tokens := []Token{NewToken(tt, t.complexTokenBuilder.builder.String(), lineNumber, column)}
+	t.complexTokenBuilder.endBuild()
+	return tokens, nil
+}
+
+func (t *Tokenizer) handleWhitespace(tokens []Token, rawLine []byte, column *int, lineNumber int) error {
+	r, runeSize := utf8.DecodeRune(rawLine)
+	if t.indentationCharacter == 0 {
+		t.indentationCharacter = r
+	}
+	if t.indentationCharacter != r {
+		return fmt.Errorf("inconsistent indentation character found at %d:%d", lineNumber, *column)
+	}
+
+	// build indentation
+	var b strings.Builder
+	for r == whitespace {
+		rawLine = rawLine[runeSize:]
+		b.WriteString(" ")
+		*column++
+		r, runeSize = utf8.DecodeRune(rawLine)
+	}
+	if b.Len() > 0 {
+		tokens = append(tokens, NewToken(TokenTypeIndentation, b.String(), lineNumber, *column))
+	}
+
+	return nil
 }
