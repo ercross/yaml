@@ -4,17 +4,17 @@ import (
 	"fmt"
 )
 
-type tokenType int8
+type TokenType int8
 
 const (
-	TokenTypeUnknown tokenType = iota
+	TokenTypeUnknown TokenType = iota
 	// TokenTypeData could refer to a key or value of any data type
 	TokenTypeData
 	TokenTypeColon
 	TokenTypeDocumentStart
 	TokenTypeDocumentEnd
 
-	// TokenTypeIndentation indicates tokenType is an indentation.
+	// TokenTypeIndentation indicates TokenType is an indentation.
 	// An indentation is zero or more spaces preceding a newline rune
 	TokenTypeIndentation
 	TokenTypeNewline
@@ -55,7 +55,7 @@ const (
 	closingCurlyBrace         = '}'
 )
 
-var symbolToTokenType map[rune]tokenType = map[rune]tokenType{
+var symbolToTokenType map[rune]TokenType = map[rune]TokenType{
 	newline:              TokenTypeNewline,
 	colon:                TokenTypeColon,
 	pipe:                 TokenTypePipe,
@@ -71,22 +71,33 @@ var symbolToTokenType map[rune]tokenType = map[rune]tokenType{
 	closingCurlyBrace:    TokenTypeClosingCurlyBrace,
 }
 
-type token struct {
-	Type     tokenType
+type Token struct {
+	Type     TokenType
 	Value    string
-	position location
+	Position Location
 }
 
-// location represent the location of the token within the document
-type location struct {
+// Location represent the Location of the Token within the document
+type Location struct {
 	line   int
 	column int
 }
 
-func (l location) String() string {
+func (l Location) String() string {
 	return fmt.Sprintf("line(%d): column(%d)", l.line, l.column)
 }
 
-func (t token) String() string {
-	return fmt.Sprintf("token{Type: %v, Value: %v, Position: %v}", t.Type, t.Value, t.position)
+func (t Token) String() string {
+	return fmt.Sprintf("Token{Type: %v, Value: %v, Position: %v}", t.Type, t.Value, t.Position)
+}
+
+func NewToken(typ TokenType, value string, line, column int) Token {
+	return Token{
+		Type:  typ,
+		Value: value,
+		Position: Location{
+			line:   line,
+			column: column,
+		},
+	}
 }

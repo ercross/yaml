@@ -1,14 +1,14 @@
 package tokenizer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
-type tokenizer struct {
-	tokens                []token
+type Tokenizer struct {
 	startLine             int
 	startColumn           int
 	multilineTokenBuilder strings.Builder
@@ -18,53 +18,42 @@ type tokenizer struct {
 	indentationCharacter rune
 }
 
-func newTokenizer() *tokenizer {
-	return &tokenizer{}
+func NewTokenizer() *Tokenizer {
+	return &Tokenizer{}
 }
 
-func newToken(typ tokenType, value string, line, column int) token {
-	return token{
-		Type:  typ,
-		Value: value,
-		position: location{
-			line:   line,
-			column: column,
-		},
-	}
-}
-
-func (t *tokenizer) endBuild() {
+func (t *Tokenizer) endBuild() {
 	t.multilineTokenBuilder.Reset()
 	t.endBuildOnNext = 0
 	t.startLine = 0
 	t.startColumn = 0
 }
 
-func (t *tokenizer) startBuilding(breakOn rune, lineNumber int, column int) {
+func (t *Tokenizer) startBuilding(breakOn rune, lineNumber int, column int) {
 	t.endBuildOnNext = breakOn
 	t.startLine = lineNumber
 	t.startColumn = column
 }
 
-func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
+func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err error) {
 	if len(line) == 0 {
-		return
+		return tokens, nil
 	}
 
-	column := 0
+	column := 1
 
 	rawLine := []byte(line)
 	for len(rawLine) > 0 {
 
 		r, runeSize := utf8.DecodeRune(rawLine)
 
-		if column == 0 {
+		if column == 1 {
 			if isWhiteSpaceCharacter(r) {
 				if t.indentationCharacter == 0 {
 					t.indentationCharacter = r
 				}
 				if t.indentationCharacter != r {
-					panic(fmt.Sprintf("inconsistent indentation character found at %d:%d", lineNumber, column))
+					return nil, fmt.Errorf("inconsistent indentation character found at %d:%d", lineNumber, column)
 				}
 
 				// build indentation
@@ -76,7 +65,7 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 					r, runeSize = utf8.DecodeRune(rawLine)
 				}
 				if b.Len() > 0 {
-					t.tokens = append(t.tokens, newToken(TokenTypeIndentation, b.String(), lineNumber, column))
+					tokens = append(tokens, NewToken(TokenTypeIndentation, b.String(), lineNumber, column))
 				}
 				continue
 			}
@@ -84,13 +73,13 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 			if r == period || r == dash {
 				allowedLength := 3
 				if len(rawLine) != allowedLength {
-					panic(fmt.Sprintf("document start or end tokens must be on a separate line"))
+					return nil, fmt.Errorf("document start or end tokens must be on a separate line")
 				}
 
 				t.startBuilding(r, lineNumber, column)
 				for len(rawLine) > 0 {
 					if r != t.endBuildOnNext {
-						panic(fmt.Sprintf("unexpected rune %v", string(r)))
+						return nil, fmt.Errorf("unexpected rune %v", string(r))
 					}
 					t.multilineTokenBuilder.WriteString(string(r))
 					rawLine = rawLine[runeSize:]
@@ -102,7 +91,7 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 				if r == dash {
 					tt = TokenTypeDocumentStart
 				}
-				t.tokens = append(t.tokens, newToken(tt, t.multilineTokenBuilder.String(), lineNumber, column))
+				tokens = append(tokens, NewToken(tt, t.multilineTokenBuilder.String(), lineNumber, column))
 				t.endBuild()
 				return
 			}
@@ -111,7 +100,7 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 		if (r == doubleQuote || r == singleQuote) && !t.isEscapeSequence(r) {
 			rawLine = rawLine[runeSize:]
 			if t.isBuilding() && t.endBuildOnNext == r {
-				t.tokens = append(t.tokens, newToken(TokenTypeData, t.multilineTokenBuilder.String(), t.startLine, t.startColumn))
+				tokens = append(tokens, NewToken(TokenTypeData, t.multilineTokenBuilder.String(), t.startLine, t.startColumn))
 				t.endBuild()
 				column++
 				continue
@@ -120,11 +109,11 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 				t.startBuilding(r, lineNumber, column)
 				continue
 			}
-			panic("unknown token build state")
+			return nil, errors.New("unknown Token build state")
 		}
 
 		if t.isBuilding() {
-			// build data token
+			// build data Token
 			t.multilineTokenBuilder.WriteString(string(r))
 			rawLine = rawLine[runeSize:]
 			column++
@@ -140,14 +129,14 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 		}
 
 		if r == commentStarter {
-			t.tokens = append(t.tokens, newToken(TokenTypeComment, extractComment(line), lineNumber, column))
+			tokens = append(tokens, NewToken(TokenTypeComment, extractComment(line), lineNumber, column))
 			return
 		}
 
 		// check for YAML-meaningful symbol
 		if tt, ok := symbolToTokenType[r]; ok {
 			rawLine = rawLine[runeSize:]
-			t.tokens = append(t.tokens, newToken(tt, "", lineNumber, column))
+			tokens = append(tokens, NewToken(tt, "", lineNumber, column))
 			column++
 			continue
 		}
@@ -166,15 +155,17 @@ func (t *tokenizer) tokenizeLine(line string, lineNumber int) {
 				}
 			}
 
-			t.tokens = append(t.tokens, newToken(TokenTypeData, b.String(), lineNumber, startColumn))
+			tokens = append(tokens, NewToken(TokenTypeData, b.String(), lineNumber, startColumn))
 			continue
 		}
 
-		panic(fmt.Sprintf("unknown token %v on %d:%d", string(r), lineNumber, column))
+		return nil, fmt.Errorf("unknown Token %v on %d:%d", string(r), lineNumber, column)
 	}
+
+	return tokens, nil
 }
 
-func (t *tokenizer) isBuilding() bool {
+func (t *Tokenizer) isBuilding() bool {
 	return t.startColumn > 0 && t.endBuildOnNext != 0
 }
 
@@ -192,7 +183,7 @@ func isYAMLValidSymbol(r rune) bool {
 	return ok
 }
 
-func (t *tokenizer) isEscapeSequence(r rune) bool {
+func (t *Tokenizer) isEscapeSequence(r rune) bool {
 	if !t.isBuilding() {
 		return false
 	}
