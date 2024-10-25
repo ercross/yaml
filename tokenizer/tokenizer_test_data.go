@@ -1,5 +1,7 @@
 package tokenizer
 
+var ScalarLines = scalarLines
+
 var scalarLines = []string{
 	`string: "Hello\, World"` + "\n",
 	"integer: 12345\n",
@@ -8,7 +10,7 @@ var scalarLines = []string{
 	"boolean_false: false\n",
 	"null_value: null\n",
 	"single_quote_string: 'This is YAML!'\n",
-	//`escaped_chars: "Line with a "quote" inside"` + "\n",
+	`escaped_chars: "Line with a "quote" inside"` + "\n",
 	"scientific: 1.23e4\n",
 }
 
@@ -68,20 +70,20 @@ var expectedScalarTokens = [][]Token{
 		NewToken(TokenTypeNewline, "", 7, 36),
 	},
 
-	/*{
+	{
 		// escaped_chars: "Line with a \"quote\" inside"
 		NewToken(TokenTypeData, "escaped_chars", 8, 1),
 		NewToken(TokenTypeColon, "", 8, 14),
-		NewToken(TokenTypeData, `Line with a "quote" inside`, 8, 15),
-		NewToken(TokenTypeNewline, "", 8, 40),
-	},*/
+		NewToken(TokenTypeData, `Line with a "quote" inside`, 8, 16),
+		NewToken(TokenTypeNewline, "", 8, 41),
+	},
 
 	{
 		// scientific: 1.23e4
-		NewToken(TokenTypeData, "scientific", 8, 1),
-		NewToken(TokenTypeColon, "", 8, 11),
-		NewToken(TokenTypeData, "1.23e4", 8, 13),
-		NewToken(TokenTypeNewline, "", 8, 19),
+		NewToken(TokenTypeData, "scientific", 9, 1),
+		NewToken(TokenTypeColon, "", 9, 11),
+		NewToken(TokenTypeData, "1.23e4", 9, 13),
+		NewToken(TokenTypeNewline, "", 9, 19),
 	},
 }
 

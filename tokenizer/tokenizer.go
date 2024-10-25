@@ -1,7 +1,6 @@
 package tokenizer
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"unicode"
@@ -9,27 +8,35 @@ import (
 )
 
 type Tokenizer struct {
-	startLine             int
-	startColumn           int
-	multilineTokenBuilder strings.Builder
-	endBuildOnNext        rune
+	complexTokenBuilder *complexTokenBuilder
 
 	// indentationCharacter must be consistent once set
 	indentationCharacter rune
 }
 
-func NewTokenizer() *Tokenizer {
-	return &Tokenizer{}
+// manages build process for complex tokens (e.g., quoted strings)
+type complexTokenBuilder struct {
+	startLine                     int
+	startColumn                   int
+	builder                       strings.Builder
+	endBuildOnNext                rune
+	startCharacterOccurrenceCount int
 }
 
-func (t *Tokenizer) endBuild() {
-	t.multilineTokenBuilder.Reset()
+func NewTokenizer() *Tokenizer {
+	return &Tokenizer{
+		complexTokenBuilder: &complexTokenBuilder{},
+	}
+}
+
+func (t *complexTokenBuilder) endBuild() {
+	t.builder.Reset()
 	t.endBuildOnNext = 0
 	t.startLine = 0
 	t.startColumn = 0
 }
 
-func (t *Tokenizer) startBuilding(breakOn rune, lineNumber int, column int) {
+func (t *complexTokenBuilder) startBuilding(breakOn rune, lineNumber int, column int) {
 	t.endBuildOnNext = breakOn
 	t.startLine = lineNumber
 	t.startColumn = column
@@ -76,12 +83,12 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 					return nil, fmt.Errorf("document start or end tokens must be on a separate line")
 				}
 
-				t.startBuilding(r, lineNumber, column)
+				t.complexTokenBuilder.startBuilding(r, lineNumber, column)
 				for len(rawLine) > 0 {
-					if r != t.endBuildOnNext {
+					if r != t.complexTokenBuilder.endBuildOnNext {
 						return nil, fmt.Errorf("unexpected rune %v", string(r))
 					}
-					t.multilineTokenBuilder.WriteString(string(r))
+					t.complexTokenBuilder.builder.WriteString(string(r))
 					rawLine = rawLine[runeSize:]
 					r, runeSize = utf8.DecodeRune(rawLine)
 					column++
@@ -91,30 +98,35 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 				if r == dash {
 					tt = TokenTypeDocumentStart
 				}
-				tokens = append(tokens, NewToken(tt, t.multilineTokenBuilder.String(), lineNumber, column))
-				t.endBuild()
+				tokens = append(tokens, NewToken(tt, t.complexTokenBuilder.builder.String(), lineNumber, column))
+				t.complexTokenBuilder.endBuild()
 				return
 			}
 		}
 
-		if (r == doubleQuote || r == singleQuote) && !t.isEscapeSequence(r) {
+		if (r == doubleQuote || r == singleQuote) && !t.complexTokenBuilder.isEscapeSequence(r) {
+			t.complexTokenBuilder.startCharacterOccurrenceCount++
 			rawLine = rawLine[runeSize:]
-			if t.isBuilding() && t.endBuildOnNext == r {
-				tokens = append(tokens, NewToken(TokenTypeData, t.multilineTokenBuilder.String(), t.startLine, t.startColumn))
-				t.endBuild()
-				column++
+			if t.complexTokenBuilder.isBuilding() && t.complexTokenBuilder.endBuildOnNext == r {
+				if t.complexTokenBuilder.canEndBuilding(rawLine) {
+					tokens = append(tokens, NewToken(TokenTypeData, t.complexTokenBuilder.builder.String(), t.complexTokenBuilder.startLine, t.complexTokenBuilder.startColumn))
+					t.complexTokenBuilder.endBuild()
+					column++
+					continue
+				}
+
+				t.complexTokenBuilder.builder.WriteString(string(r))
 				continue
 			}
-			if !t.isBuilding() && t.endBuildOnNext != r {
-				t.startBuilding(r, lineNumber, column)
-				continue
-			}
-			return nil, errors.New("unknown Token build state")
+
+			t.complexTokenBuilder.startBuilding(r, lineNumber, column)
+			continue
+
 		}
 
-		if t.isBuilding() {
+		if t.complexTokenBuilder.isBuilding() {
 			// build data Token
-			t.multilineTokenBuilder.WriteString(string(r))
+			t.complexTokenBuilder.builder.WriteString(string(r))
 			rawLine = rawLine[runeSize:]
 			column++
 			continue
@@ -165,7 +177,7 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 	return tokens, nil
 }
 
-func (t *Tokenizer) isBuilding() bool {
+func (t complexTokenBuilder) isBuilding() bool {
 	return t.startColumn > 0 && t.endBuildOnNext != 0
 }
 
@@ -183,14 +195,27 @@ func isYAMLValidSymbol(r rune) bool {
 	return ok
 }
 
-func (t *Tokenizer) isEscapeSequence(r rune) bool {
+func (t complexTokenBuilder) isEscapeSequence(r rune) bool {
 	if !t.isBuilding() {
 		return false
 	}
 
-	return r == doubleQuote && strings.HasSuffix(t.multilineTokenBuilder.String(), "\\")
+	return r == doubleQuote && strings.HasSuffix(t.builder.String(), "\\")
 }
 
 func isWhiteSpaceCharacter(r rune) bool {
 	return r == whitespace || r == tab
+}
+
+func (t complexTokenBuilder) canEndBuilding(rawLine []byte) bool {
+
+	nextCharacter, size := utf8.DecodeRune(rawLine)
+	if size == utf8.RuneError {
+		return false
+	}
+
+	if (nextCharacter == whitespace || nextCharacter == newline) && t.startCharacterOccurrenceCount%2 == 0 {
+		return true
+	}
+	return false
 }
