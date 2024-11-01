@@ -6,8 +6,6 @@ import (
 	"github.com/ercross/yaml/token"
 )
 
-var st *tokenTrie
-
 type (
 
 	// tokenTrie is basically a tree of tokens, each node in your tree represents a token in the YAML syntax.
@@ -49,6 +47,8 @@ type (
 		current *nodeSyntaxToken
 	}
 )
+
+var st *tokenTrie
 
 func initTokenTrie() {
 	st = &tokenTrie{

@@ -1,9 +1,8 @@
-package tokenizer
+package data
 
 import "github.com/ercross/yaml/token"
 
 var ScalarLines = scalarLines
-
 var scalarLines = []string{
 	`string: "Hello\, World"` + "\n",
 	"integer: 12345\n",
@@ -16,6 +15,7 @@ var scalarLines = []string{
 	"scientific: 1.23e4\n",
 }
 
+var ExpectedScalarTokens = expectedScalarTokens
 var expectedScalarTokens = [][]token.Token{
 	// strings: "Hello\, World\n"
 	{
