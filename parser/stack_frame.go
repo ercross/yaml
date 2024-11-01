@@ -8,25 +8,15 @@ import (
 )
 
 var (
-	// errIncompatibleIndentationEncountered is returned if a TokenTypeIndentation with indentation length
-	// longer than Frame.AllowedIndentationLevel is found.
-	// This error might indicate to pause the current Frame,
-	// especially if the encountered indentationLevel is lower than the current Frame.AllowedIndentationLevel
-	errIncompatibleIndentationEncountered = errors.New("incompatible indentation encountered")
-
-	// errNewKeyEncountered is returned if newly encountered key is preceded by the same level of indentation
-	// as the current Frame.AllowedIndentationLevel
-	errNewKeyEncountered = errors.New("new key encountered")
-
 	errUnexpectedTokenType = errors.New("unexpected token type")
-
-	errFrameTypeUnknown = errors.New("frame type unknown")
 )
 
+// Frame is a stateful yaml.Node building session
 type Frame interface {
 	NodeType() yaml.NodeType
 
-	Parse([]token.Token) error
+	// Build a yaml.NodeType from tokens argument
+	Build([]token.Token) error
 
 	// Builder building the underlying Node
 	Builder() yaml.NodeBuilder
@@ -56,9 +46,9 @@ func (f *scalarFrame) NodeType() yaml.NodeType {
 	return yaml.NodeTypeScalar
 }
 
-func (f *scalarFrame) Parse(tokens []token.Token) error {
+func (f *scalarFrame) Build(tokens []token.Token) error {
 	var hasVisitedAllowedIndentation bool
-	i := 0
+	i := -1
 	for f.sequenceIterator.hasNext() && i < len(tokens) {
 		i++
 		if tokens[i].Type == token.TypeIndentation {
@@ -77,7 +67,7 @@ func (f *scalarFrame) Parse(tokens []token.Token) error {
 		}
 
 		if expected.tokenType != tokens[i].Type {
-			return errUnexpectedTokenType
+			return fmt.Errorf("expected token type %d but got token type %d: %w", expected.tokenType, tokens[i].Type, errUnexpectedTokenType)
 		}
 
 		// newline token is the last token in a scalar frame syntax
