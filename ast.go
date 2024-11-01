@@ -84,7 +84,7 @@ func (n *DocumentNode) SetValue(interface{}) {
 	return
 }
 
-func newScalarNodeBuilder() *ScalarNode {
+func NewScalarNodeBuilder() *ScalarNode {
 	return &ScalarNode{}
 }
 
