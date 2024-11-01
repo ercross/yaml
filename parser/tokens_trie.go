@@ -39,7 +39,7 @@ type (
 		next      *nodeSyntaxToken
 	}
 
-	// nodeSyntax should not include leading TokenTypeIndentation that comes before Frame key
+	// nodeSyntax should not include leading token.TypeIndentation that comes before Node key
 	nodeSyntax struct {
 		head *nodeSyntaxToken
 		size int
@@ -50,7 +50,7 @@ type (
 	}
 )
 
-func initSyntaxTree() {
+func initTokenTrie() {
 	st = &tokenTrie{
 		root: &tokenTrieNode{},
 	}
