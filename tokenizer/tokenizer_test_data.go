@@ -1,5 +1,7 @@
 package tokenizer
 
+import "github.com/ercross/yaml/token"
+
 var ScalarLines = scalarLines
 
 var scalarLines = []string{
@@ -14,76 +16,76 @@ var scalarLines = []string{
 	"scientific: 1.23e4\n",
 }
 
-var expectedScalarTokens = [][]Token{
+var expectedScalarTokens = [][]token.Token{
 	// strings: "Hello\, World\n"
 	{
-		NewToken(TokenTypeData, "string", 1, 1),
-		NewToken(TokenTypeColon, "", 1, 7),
-		NewToken(TokenTypeData, `Hello\, World`, 1, 9),
-		NewToken(TokenTypeNewline, "", 1, 23),
+		token.New(token.TypeData, "string", 1, 1),
+		token.New(token.TypeColon, "", 1, 7),
+		token.New(token.TypeData, `Hello\, World`, 1, 9),
+		token.New(token.TypeNewline, "", 1, 23),
 	},
 
 	{
 		// integer: 12345
-		NewToken(TokenTypeData, "integer", 2, 1),
-		NewToken(TokenTypeColon, "", 2, 8),
-		NewToken(TokenTypeData, "12345", 2, 10),
-		NewToken(TokenTypeNewline, "", 2, 15),
+		token.New(token.TypeData, "integer", 2, 1),
+		token.New(token.TypeColon, "", 2, 8),
+		token.New(token.TypeData, "12345", 2, 10),
+		token.New(token.TypeNewline, "", 2, 15),
 	},
 
 	{
 		// float: 3.14159
-		NewToken(TokenTypeData, "float", 3, 1),
-		NewToken(TokenTypeColon, "", 3, 6),
-		NewToken(TokenTypeData, "3.14159", 3, 8),
-		NewToken(TokenTypeNewline, "", 3, 15),
+		token.New(token.TypeData, "float", 3, 1),
+		token.New(token.TypeColon, "", 3, 6),
+		token.New(token.TypeData, "3.14159", 3, 8),
+		token.New(token.TypeNewline, "", 3, 15),
 	},
 
 	{
 		// boolean_true: true
-		NewToken(TokenTypeData, "boolean_true", 4, 1),
-		NewToken(TokenTypeColon, "", 4, 13),
-		NewToken(TokenTypeData, "true", 4, 15),
-		NewToken(TokenTypeNewline, "", 4, 19),
+		token.New(token.TypeData, "boolean_true", 4, 1),
+		token.New(token.TypeColon, "", 4, 13),
+		token.New(token.TypeData, "true", 4, 15),
+		token.New(token.TypeNewline, "", 4, 19),
 	},
 
 	{
 		// boolean_false: false
-		NewToken(TokenTypeData, "boolean_false", 5, 1),
-		NewToken(TokenTypeColon, "", 5, 14),
-		NewToken(TokenTypeData, "false", 5, 16),
-		NewToken(TokenTypeNewline, "", 5, 21),
+		token.New(token.TypeData, "boolean_false", 5, 1),
+		token.New(token.TypeColon, "", 5, 14),
+		token.New(token.TypeData, "false", 5, 16),
+		token.New(token.TypeNewline, "", 5, 21),
 	},
 	{
 		// null_value: null
-		NewToken(TokenTypeData, "null_value", 6, 1),
-		NewToken(TokenTypeColon, "", 6, 11),
-		NewToken(TokenTypeData, "null", 6, 13),
-		NewToken(TokenTypeNewline, "", 6, 17),
+		token.New(token.TypeData, "null_value", 6, 1),
+		token.New(token.TypeColon, "", 6, 11),
+		token.New(token.TypeData, "null", 6, 13),
+		token.New(token.TypeNewline, "", 6, 17),
 	},
 
 	{
 		// single_quote_string: 'This is YAML!'
-		NewToken(TokenTypeData, "single_quote_string", 7, 1),
-		NewToken(TokenTypeColon, "", 7, 20),
-		NewToken(TokenTypeData, "This is YAML!", 7, 22),
-		NewToken(TokenTypeNewline, "", 7, 36),
+		token.New(token.TypeData, "single_quote_string", 7, 1),
+		token.New(token.TypeColon, "", 7, 20),
+		token.New(token.TypeData, "This is YAML!", 7, 22),
+		token.New(token.TypeNewline, "", 7, 36),
 	},
 
 	{
 		// escaped_chars: "Line with a \"quote\" inside"
-		NewToken(TokenTypeData, "escaped_chars", 8, 1),
-		NewToken(TokenTypeColon, "", 8, 14),
-		NewToken(TokenTypeData, `Line with a "quote" inside`, 8, 16),
-		NewToken(TokenTypeNewline, "", 8, 41),
+		token.New(token.TypeData, "escaped_chars", 8, 1),
+		token.New(token.TypeColon, "", 8, 14),
+		token.New(token.TypeData, `Line with a "quote" inside`, 8, 16),
+		token.New(token.TypeNewline, "", 8, 41),
 	},
 
 	{
 		// scientific: 1.23e4
-		NewToken(TokenTypeData, "scientific", 9, 1),
-		NewToken(TokenTypeColon, "", 9, 11),
-		NewToken(TokenTypeData, "1.23e4", 9, 13),
-		NewToken(TokenTypeNewline, "", 9, 19),
+		token.New(token.TypeData, "scientific", 9, 1),
+		token.New(token.TypeColon, "", 9, 11),
+		token.New(token.TypeData, "1.23e4", 9, 13),
+		token.New(token.TypeNewline, "", 9, 19),
 	},
 }
 

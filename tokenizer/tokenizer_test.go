@@ -1,13 +1,14 @@
 package tokenizer
 
 import (
+	"github.com/ercross/yaml/token"
 	"testing"
 )
 
 func TestTokenizeLine(t *testing.T) {
-	tkn := NewTokenizer()
+	tkn := New()
 	var (
-		tokens []Token
+		tokens []token.Token
 		err    error
 	)
 

@@ -33,43 +33,27 @@ const (
 )
 
 const (
-	dash                 rune = '-'
-	whitespace                = ' '
-	tab                       = '\t'
-	commentStarter            = '#'
-	newline                   = '\n'
-	colon                     = ':'
-	pipe                      = '|'
-	comma                     = ','
-	greaterThan               = '>'
-	questionMark              = '?'
-	exclamationMark           = '!'
-	ampersand                 = '&'
-	asterisk                  = '*'
-	singleQuote               = '\''
-	doubleQuote               = '"'
-	period                    = '.'
-	openingSquareBracket      = '['
-	closingSquareBracket      = ']'
-	openingCurlyBrace         = '{'
-	closingCurlyBrace         = '}'
+	CharDash                 rune = '-'
+	CharWhitespace                = ' '
+	CharTab                       = '\t'
+	CharCommentStarter            = '#'
+	CharNewline                   = '\n'
+	CharColon                     = ':'
+	CharPipe                      = '|'
+	CharComma                     = ','
+	CharGreaterThan               = '>'
+	CharQuestionMark              = '?'
+	CharExclamationMark           = '!'
+	CharAmpersand                 = '&'
+	CharAsterisk                  = '*'
+	CharSingleQuote               = '\''
+	CharDoubleQuote               = '"'
+	CharPeriod                    = '.'
+	CharOpeningSquareBracket      = '['
+	CharClosingSquareBracket      = ']'
+	CharOpeningCurlyBrace         = '{'
+	CharClosingCurlyBrace         = '}'
 )
-
-var symbolToType map[rune]Type = map[rune]Type{
-	newline:              TypeNewline,
-	colon:                TypeColon,
-	pipe:                 TypePipe,
-	comma:                TypeComma,
-	greaterThan:          TypeGreaterThan,
-	questionMark:         TypeQuestionMark,
-	exclamationMark:      TypeExclamationMark,
-	ampersand:            TypeAmpersand,
-	asterisk:             TypeAsterisk,
-	openingSquareBracket: TypeOpeningSquareBracket,
-	closingSquareBracket: TypeClosingSquareBracket,
-	openingCurlyBrace:    TypeOpeningCurlyBrace,
-	closingCurlyBrace:    TypeClosingCurlyBrace,
-}
 
 type Token struct {
 	Type     Type
@@ -91,7 +75,7 @@ func (t Token) String() string {
 	return fmt.Sprintf("Token{Type: %v, Value: %v, Position: %v}", t.Type, t.Value, t.Position)
 }
 
-func NewToken(typ Type, value string, line, column int) Token {
+func New(typ Type, value string, line, column int) Token {
 	return Token{
 		Type:  typ,
 		Value: value,

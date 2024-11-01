@@ -2,6 +2,7 @@ package tokenizer
 
 import (
 	"fmt"
+	"github.com/ercross/yaml/token"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -23,7 +24,23 @@ type complexTokenBuilder struct {
 	startCharacterOccurrenceCount int
 }
 
-func NewTokenizer() *Tokenizer {
+var symbolToTokenType map[rune]token.Type = map[rune]token.Type{
+	token.CharNewline:              token.TypeNewline,
+	token.CharColon:                token.TypeColon,
+	token.CharPipe:                 token.TypePipe,
+	token.CharComma:                token.TypeComma,
+	token.CharGreaterThan:          token.TypeGreaterThan,
+	token.CharQuestionMark:         token.TypeQuestionMark,
+	token.CharExclamationMark:      token.TypeExclamationMark,
+	token.CharAmpersand:            token.TypeAmpersand,
+	token.CharAsterisk:             token.TypeAsterisk,
+	token.CharOpeningSquareBracket: token.TypeOpeningSquareBracket,
+	token.CharClosingSquareBracket: token.TypeClosingSquareBracket,
+	token.CharOpeningCurlyBrace:    token.TypeOpeningCurlyBrace,
+	token.CharClosingCurlyBrace:    token.TypeClosingCurlyBrace,
+}
+
+func New() *Tokenizer {
 	return &Tokenizer{
 		complexTokenBuilder: &complexTokenBuilder{},
 	}
@@ -42,7 +59,7 @@ func (t *complexTokenBuilder) startBuilding(breakOn rune, lineNumber int, column
 	t.startColumn = column
 }
 
-func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err error) {
+func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []token.Token, err error) {
 	if len(line) == 0 {
 		return tokens, nil
 	}
@@ -62,17 +79,17 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 				continue
 			}
 
-			if (r == period || r == dash) && len(tokens) == 0 {
+			if (r == token.CharPeriod || r == token.CharDash) && len(tokens) == 0 {
 				return t.handleDocumentStarters(rawLine, lineNumber)
 			}
 		}
 
-		if (r == doubleQuote || r == singleQuote) && !t.complexTokenBuilder.isEscapeSequence(r) {
+		if (r == token.CharDoubleQuote || r == token.CharSingleQuote) && !t.complexTokenBuilder.isEscapeSequence(r) {
 			t.complexTokenBuilder.startCharacterOccurrenceCount++
 			rawLine = rawLine[runeSize:]
 			if t.complexTokenBuilder.isBuilding() && t.complexTokenBuilder.endBuildOnNext == r {
 				if t.complexTokenBuilder.canEndBuilding(rawLine) {
-					tokens = append(tokens, NewToken(TokenTypeData, t.complexTokenBuilder.builder.String(), t.complexTokenBuilder.startLine, t.complexTokenBuilder.startColumn))
+					tokens = append(tokens, token.New(token.TypeData, t.complexTokenBuilder.builder.String(), t.complexTokenBuilder.startLine, t.complexTokenBuilder.startColumn))
 					t.complexTokenBuilder.endBuild()
 					column++
 					continue
@@ -103,15 +120,15 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 			continue
 		}
 
-		if r == commentStarter {
-			tokens = append(tokens, NewToken(TokenTypeComment, extractComment(line), lineNumber, column))
+		if r == token.CharCommentStarter {
+			tokens = append(tokens, token.New(token.TypeComment, extractComment(line), lineNumber, column))
 			return
 		}
 
 		// check for YAML-meaningful symbol
 		if tt, ok := symbolToTokenType[r]; ok {
 			rawLine = rawLine[runeSize:]
-			tokens = append(tokens, NewToken(tt, "", lineNumber, column))
+			tokens = append(tokens, token.New(tt, "", lineNumber, column))
 			column++
 			continue
 		}
@@ -130,7 +147,7 @@ func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []Token, err e
 				}
 			}
 
-			tokens = append(tokens, NewToken(TokenTypeData, b.String(), lineNumber, startColumn))
+			tokens = append(tokens, token.New(token.TypeData, b.String(), lineNumber, startColumn))
 			continue
 		}
 
@@ -163,11 +180,11 @@ func (t complexTokenBuilder) isEscapeSequence(r rune) bool {
 		return false
 	}
 
-	return r == doubleQuote && strings.HasSuffix(t.builder.String(), `\`)
+	return r == token.CharDoubleQuote && strings.HasSuffix(t.builder.String(), `\`)
 }
 
 func isWhiteSpaceCharacter(r rune) bool {
-	return r == whitespace || r == tab
+	return r == token.CharWhitespace || r == token.CharTab
 }
 
 func (t complexTokenBuilder) canEndBuilding(rawLine []byte) bool {
@@ -177,13 +194,13 @@ func (t complexTokenBuilder) canEndBuilding(rawLine []byte) bool {
 		return false
 	}
 
-	if (nextCharacter == whitespace || nextCharacter == newline) && t.startCharacterOccurrenceCount%2 == 0 {
+	if (nextCharacter == token.CharWhitespace || nextCharacter == token.CharNewline) && t.startCharacterOccurrenceCount%2 == 0 {
 		return true
 	}
 	return false
 }
 
-func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]Token, error) {
+func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]token.Token, error) {
 	column := 1
 	allowedLength := 3
 	if len(rawLine) != allowedLength {
@@ -202,16 +219,16 @@ func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]To
 		column++
 	}
 
-	tt := TokenTypeDocumentEnd
-	if r == dash {
-		tt = TokenTypeDocumentStart
+	tt := token.TypeDocumentEnd
+	if r == token.CharDash {
+		tt = token.TypeDocumentStart
 	}
-	tokens := []Token{NewToken(tt, t.complexTokenBuilder.builder.String(), lineNumber, column)}
+	tokens := []token.Token{token.New(tt, t.complexTokenBuilder.builder.String(), lineNumber, column)}
 	t.complexTokenBuilder.endBuild()
 	return tokens, nil
 }
 
-func (t *Tokenizer) handleWhitespace(tokens []Token, rawLine []byte, column *int, lineNumber int) error {
+func (t *Tokenizer) handleWhitespace(tokens []token.Token, rawLine []byte, column *int, lineNumber int) error {
 	r, runeSize := utf8.DecodeRune(rawLine)
 	if t.indentationCharacter == 0 {
 		t.indentationCharacter = r
@@ -222,14 +239,14 @@ func (t *Tokenizer) handleWhitespace(tokens []Token, rawLine []byte, column *int
 
 	// build indentation
 	var b strings.Builder
-	for r == whitespace {
+	for r == token.CharWhitespace {
 		rawLine = rawLine[runeSize:]
 		b.WriteString(" ")
 		*column++
 		r, runeSize = utf8.DecodeRune(rawLine)
 	}
 	if b.Len() > 0 {
-		tokens = append(tokens, NewToken(TokenTypeIndentation, b.String(), lineNumber, *column))
+		tokens = append(tokens, token.New(token.TypeIndentation, b.String(), lineNumber, *column))
 	}
 
 	return nil

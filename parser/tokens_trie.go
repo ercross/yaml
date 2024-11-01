@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 	"github.com/ercross/yaml"
-	"github.com/ercross/yaml/tokenizer"
+	"github.com/ercross/yaml/token"
 )
 
 var st *tokenTrie
@@ -19,7 +19,7 @@ type (
 	}
 
 	tokenTrieNode struct {
-		tokenType tokenizer.TokenType
+		tokenType token.Type
 		children  []*tokenTrieNode
 
 		// nodeType not empty indicates this node is a leaf
@@ -35,7 +35,7 @@ type (
 type (
 	nodeSyntaxToken struct {
 		optional  bool
-		tokenType tokenizer.TokenType
+		tokenType token.Type
 		next      *nodeSyntaxToken
 	}
 
@@ -84,7 +84,7 @@ func (t *tokenTrie) insertNodeSyntax(ts *nodeSyntax, f yaml.NodeType) {
 	})
 }
 
-func containsTokenType(nodes []*tokenTrieNode, t tokenizer.TokenType) int {
+func containsTokenType(nodes []*tokenTrieNode, t token.Type) int {
 	for i, node := range nodes {
 		if node.tokenType == t {
 			return i
@@ -100,12 +100,12 @@ func newNodeTypeFinder() *nodeTypeFinder {
 }
 
 // search for Frame using Depth-First search algorithm
-func (f *nodeTypeFinder) findMatch(tokens []tokenizer.Token) {
+func (f *nodeTypeFinder) findMatch(tokens []token.Token) {
 
 	for _, next := range tokens {
 
 		// indentation is not part of syntax tree
-		if next.Type == tokenizer.TokenTypeIndentation {
+		if next.Type == token.TypeIndentation {
 			continue
 		}
 		if f.position.nodeType != yaml.NodeTypeUnknown {
@@ -203,8 +203,8 @@ func (ts *nodeSyntax) createCycle(from, to int) *nodeSyntax {
 }
 
 func scalarNodeSyntax() *nodeSyntax {
-	return newNodeSyntax(&nodeSyntaxToken{optional: false, tokenType: tokenizer.TokenTypeData}).
-		insert(&nodeSyntaxToken{optional: false, tokenType: tokenizer.TokenTypeColon}).
-		insert(&nodeSyntaxToken{optional: false, tokenType: tokenizer.TokenTypeData}).
-		insert(&nodeSyntaxToken{optional: false, tokenType: tokenizer.TokenTypeNewline})
+	return newNodeSyntax(&nodeSyntaxToken{optional: false, tokenType: token.TypeData}).
+		insert(&nodeSyntaxToken{optional: false, tokenType: token.TypeColon}).
+		insert(&nodeSyntaxToken{optional: false, tokenType: token.TypeData}).
+		insert(&nodeSyntaxToken{optional: false, tokenType: token.TypeNewline})
 }
