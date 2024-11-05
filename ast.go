@@ -102,6 +102,10 @@ type AbstractSyntaxTree struct {
 	documents []*DocumentNode
 }
 
+// IsNestable checks if NodeType can serve as a parent node to other child nodes.
+// In the context of YAML, only certain node types can nest other nodes.
+// Specifically, NodeTypeSequenceBlockStyle and NodeTypeMappingBlockStyle are nestable,
+// while other types such as scalars, flow styles, and aliases are not.
 func (nt NodeType) IsNestable() bool {
 	switch nt {
 	case NodeTypeSequenceBlockStyle, NodeTypeMappingBlockStyle:
