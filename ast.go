@@ -5,9 +5,69 @@ type (
 )
 
 const (
-	NodeTypeUnknown NodeType = iota
+	NodeTypeUnknown NodeType = iota // Node type is unknown and used as a placeholder for uninitialized or invalid nodes.
+
+	// NodeTypeScalar represents a single value node, such as a string, integer, or boolean.
+	// Example:
+	//   key: "Hello, World"
 	NodeTypeScalar
+
+	// NodeTypeDocument is the root of a YAML document. It represents the whole document structure and may contain sequences or mappings.
+	// Example:
+	//   ---
+	//   title: "YAML Example"
+	//   ---
 	NodeTypeDocument
+
+	// NodeTypeMultilineString represents a multi-line string, often using the `|` symbol to preserve line breaks.
+	// Example:
+	//   description: |
+	//     This is a multi-line
+	//     string in YAML.
+	NodeTypeMultilineString
+
+	// NodeTypeFoldedString is a multi-line text node that uses the `>` symbol to fold lines. Line breaks within folded text are converted to spaces.
+	// Example:
+	//   note: >
+	//     This text will be folded
+	//     into a single line when parsed.
+	NodeTypeFoldedString
+
+	// NodeTypeAnchor represents an anchor node, allowing values to be reused or referenced elsewhere in the document.
+	// Example:
+	//   base: &baseAnchor "Base Value"
+	NodeTypeAnchor
+
+	// NodeTypeSequenceFlowStyle represents a sequence in flow style, denoted by square brackets `[]`. This style is non-nestable.
+	// Example:
+	//   items: [1, 2, 3]
+	NodeTypeSequenceFlowStyle
+
+	// NodeTypeSequenceBlockStyle represents a sequence in block style, using `-` to denote each item. This style can contain nested elements.
+	// Example:
+	//   items:
+	//     - name: "Item 1"
+	//     - name: "Item 2"
+	NodeTypeSequenceBlockStyle
+
+	// NodeTypeMappingFlowStyle represents a mapping in flow style, using curly braces `{}`. This style is non-nestable.
+	// Example:
+	//   info: { key1: "value1", key2: "value2" }
+	NodeTypeMappingFlowStyle
+
+	// NodeTypeMappingBlockStyle represents a mapping in block style, where each key-value pair is on a new line.
+	// This style can contain nested mappings, sequences, or scalars.
+	// Example:
+	//   user:
+	//     name: "Alice"
+	//     age: 30
+	NodeTypeMappingBlockStyle
+
+	// NodeTypeAlias represents a reference to an anchor node, allowing the reuse of values defined by an anchor.
+	// Example:
+	//   base: &baseAnchor "Base Value"
+	//   alias: *baseAnchor
+	NodeTypeAlias
 )
 
 type (
@@ -40,6 +100,15 @@ type (
 
 type AbstractSyntaxTree struct {
 	documents []*DocumentNode
+}
+
+func (nt NodeType) IsNestable() bool {
+	switch nt {
+	case NodeTypeSequenceBlockStyle, NodeTypeMappingBlockStyle:
+		return true
+	default:
+		return false
+	}
 }
 
 func NewAbstractSyntaxTree() *AbstractSyntaxTree {
