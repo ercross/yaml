@@ -7,6 +7,17 @@ import (
 	"github.com/ercross/yaml/token"
 )
 
+var (
+	errNegativeIndentation    = errors.New("indentation level can not be negative")
+	errParentLevelIndentation = errors.New("can not push a parent-level node directly on a child node: " +
+		"unwind stack and try again")
+	errSiblingNodeOnNonDocumentNode = errors.New("can not push sibling node on stack: pop existing sibling and try again")
+	errChildNodeOnNonNestableNode   = errors.New("can not push a child node on non-nestable node: " +
+		"nodes pushed directly on non-nestable node must have equal indentation.level")
+	errModuloFactorIncompatibleIndentation = errors.New("inconsistent indentation level: " +
+		"indentation must be a multiple of indentationLevelModuloFactor")
+)
+
 type indentationRelationship int8
 
 const (
@@ -37,7 +48,7 @@ type indentationManager struct {
 	//
 	// Once indentationLevelModuloFactor is set, it should stay consistent throughout
 	// current yaml.DocumentNode and should not be reset
-	indentationLevelModuloFactor int
+	indentationLevelModuloFactor *int
 }
 
 type indentation struct {
@@ -54,7 +65,7 @@ func newIndentationManager() *indentationManager {
 	documentNodeIndentation := newIndentation(0, yaml.NodeTypeDocument)
 	return &indentationManager{
 		stack:                        []indentation{documentNodeIndentation},
-		indentationLevelModuloFactor: documentNodeIndentation.level,
+		indentationLevelModuloFactor: &documentNodeIndentation.level,
 	}
 }
 
@@ -86,7 +97,7 @@ func (m *indentationManager) push(newIndentationLevel int, nodeType yaml.NodeTyp
 	nin := newIndentation(newIndentationLevel, nodeType)
 
 	if m.peek().nodeType.IsNestable() && newIndentationLevel > m.peek().level {
-		m.indentationLevelModuloFactor = newIndentationLevel - m.peek().level
+		*m.indentationLevelModuloFactor = newIndentationLevel - m.peek().level
 		m.stack = append(m.stack, nin)
 		return
 	}
@@ -110,7 +121,7 @@ func (m *indentationManager) push(newIndentationLevel int, nodeType yaml.NodeTyp
 func (m *indentationManager) canPush(newIndentation indentation) error {
 
 	if newIndentation.level < 0 {
-		return errors.New("indentation level can not be negative")
+		return errNegativeIndentation
 	}
 
 	// if parser stack contains say [0, 2, 4, 6] and @newIndentationLevel = 4,
@@ -119,18 +130,19 @@ func (m *indentationManager) canPush(newIndentation indentation) error {
 	// and added as child to F3 (i.e., frame with newIndentationLevel 4).
 	// Then F3 (now containing f4) is popped and added as child to F2.
 	if m.peek().level > newIndentation.level {
-		return errors.New("can not push a parent-level node directly on a child node: " +
-			"unwind stack and try again")
+		return errParentLevelIndentation
+	}
+
+	if m.peek().level == newIndentation.level && m.peek().nodeType != yaml.NodeTypeDocument {
+		return errSiblingNodeOnNonDocumentNode
 	}
 
 	if newIndentation.level > m.peek().level && !m.peek().nodeType.IsNestable() {
-		return errors.New("can not push a child node on non-nestable node: " +
-			"nodes pushed directly on non-nestable node must have equal indentation.level")
+		return errChildNodeOnNonNestableNode
 	}
 
-	if len(m.stack) >= 2 && newIndentation.level%m.indentationLevelModuloFactor != 0 {
-		return errors.New("inconsistent indentation level: " +
-			"indentation must be a multiple of indentationLevelModuloFactor")
+	if m.indentationLevelModuloFactor != nil && newIndentation.level%(*m.indentationLevelModuloFactor) != 0 {
+		return errModuloFactorIncompatibleIndentation
 	}
 
 	return nil
