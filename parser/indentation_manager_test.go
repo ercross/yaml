@@ -1,60 +1,129 @@
 package parser
 
 import (
+	"errors"
+	"github.com/ercross/yaml"
 	"github.com/ercross/yaml/test"
-	"testing"
-
 	"github.com/ercross/yaml/token"
+	"testing"
 )
 
-func TestIndentationManager_PushPopPeek(t *testing.T) {
-	m := newIndentationManager()
-	test.AssertEqualInt(t, 0, m.peek(), "Initial indentation level should be 0")
+func TestPush(t *testing.T) {
+	t.Parallel()
 
-	m.push(2)
-	test.AssertEqualInt(t, 2, m.peek(), "Top of stack should now be 2")
+	t.Run("Test document node indentation level", func(t *testing.T) {
+		TestDocumentNodeIndentationLevel(t)
+	})
 
-	m.push(4)
-	test.AssertEqualInt(t, 4, m.peek(), "Top of stack should now be 4")
+	t.Run("Test push child node on non-nestable node", func(t *testing.T) {
+		TestPushChildOnNonNestableNode(t)
+	})
 
-	m.pop()
-	test.AssertEqualInt(t, 2, m.peek(), "After pop, top of stack should be back to 2")
+	t.Run("Test push child node on nestable node", func(t *testing.T) {
+		TestPushChildOnNestableNode(t)
+	})
 
-	m.pop()
-	test.AssertEqualInt(t, 0, m.peek(), "After popping to the base, indentation level should return to 0")
+	t.Run("Test push parent-level or ancestor-level node on stack", func(t *testing.T) {
+		TestPushParentLevelNode(t)
+	})
 
-	// Ensure that we can't pop beyond the initial level
-	m.pop()
-	test.AssertEqualInt(t, 0, m.peek(), "Should not pop the last item on stack")
+	t.Run("Test disallow inconsistent indentation", func(t *testing.T) {
+		TestPushModuloIncompatibleIndentation(t)
+	})
 }
 
-func TestIndentationManager_DetermineRelationship(t *testing.T) {
+func TestDocumentNodeIndentationLevel(t *testing.T) {
+	m := newIndentationManager()
+	test.AssertEqualInt(t, 0, m.peek().level, "Initial indentation level should be 0")
+}
+
+func TestPushChildOnNonNestableNode(t *testing.T) {
 	m := newIndentationManager()
 
-	m.push(2)
-	m.push(4)
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("push child node on document node should panic")
+		}
+		if !errors.Is(r.(error), errChildNodeOnNonNestableNode) {
+			t.Errorf("unexpected error: error is not child node on non-nestable node")
+		}
+	}()
+	m.push(2, yaml.NodeTypeScalar)
+}
 
-	actualRelationship, _ := m.determineRelationship(6)
-	test.AssertEqualInt(t, indentationRelationshipChild, actualRelationship, "6 should be considered a child of 4")
+func TestPushSiblingOnDocumentNode(t *testing.T) {
+	m := newIndentationManager()
 
-	actualRelationship, _ = m.determineRelationship(4)
-	test.AssertEqualInt(t, indentationRelationSibling, actualRelationship, "4 should be considered a sibling of 4")
+	m.push(0, yaml.NodeTypeSequenceBlockStyle)
+	test.AssertEqualInt(t, 0, m.peek().level, "top indentation level should be 0")
+}
+
+func TestPushChildOnNestableNode(t *testing.T) {
+	m := newIndentationManager()
+
+	m.push(0, yaml.NodeTypeMappingBlockStyle)
+	m.push(2, yaml.NodeTypeScalar)
+	test.AssertEqualInt(t, 2, m.peek().level, "top indentation level should be 2")
+	test.AssertEqualInt(t, 2, *m.indentationLevelModuloFactor, "indentation level modulo should be 2")
+}
+
+func TestPushParentLevelNode(t *testing.T) {
+	m := newIndentationManager()
+	m.push(0, yaml.NodeTypeSequenceBlockStyle)
+	m.push(2, yaml.NodeTypeMappingBlockStyle)
+	m.push(4, yaml.NodeTypeMappingBlockStyle)
+	m.push(6, yaml.NodeTypeScalar)
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("push parent level on stack top-element should panic")
+		}
+		if !errors.Is(r.(error), errParentLevelIndentation) {
+			t.Errorf("unexpected error: error is not parent level indentation")
+		}
+	}()
+	m.push(4, yaml.NodeTypeScalar)
+}
+
+func TestPushModuloIncompatibleIndentation(t *testing.T) {
+	m := newIndentationManager()
+	m.push(0, yaml.NodeTypeSequenceBlockStyle)
+	m.push(2, yaml.NodeTypeMappingBlockStyle)
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("push parent level on stack top-element should panic")
+		}
+		if !errors.Is(r.(error), errModuloFactorIncompatibleIndentation) {
+			t.Errorf("unexpected error: error is not modulo factor incompatible indentation")
+		}
+	}()
+	m.push(5, yaml.NodeTypeMappingBlockStyle)
+}
+
+func TestDetermineRelationship(t *testing.T) {
+	m := newIndentationManager()
+	actualRelationship, _ := m.determineRelationship(0)
+	test.AssertEqualInt(t, indentationRelationSibling, actualRelationship, "should be sibling")
 
 	actualRelationship, _ = m.determineRelationship(2)
-	test.AssertEqualInt(t, indentationRelationshipParentLevel, actualRelationship, "2 should be considered a parent of 4")
+	test.AssertEqualInt(t, indentationRelationshipUnknown, actualRelationship, "should be unknown")
 
-	m.push(6)
-	actualRelationship, pathLength := m.determineRelationship(2)
-	test.AssertEqualInt(t, indentationRelationshipParentLevel, actualRelationship, "2 should be considered a parent of 6")
-	test.AssertEqualInt(t, 2, pathLength, "path length should be 2")
+	m.push(0, yaml.NodeTypeSequenceBlockStyle)
+	actualRelationship, _ = m.determineRelationship(2)
+	test.AssertEqualInt(t, indentationRelationshipChild, actualRelationship, "should be child")
 
-	actualRelationship, _ = m.determineRelationship(3)
-	test.AssertEqualInt(t, indentationRelationshipUnknown, actualRelationship, "3 should be considered an unknown relationship")
+	m.push(2, yaml.NodeTypeScalar)
+	actualRelationship, _ = m.determineRelationship(0)
+	test.AssertEqualInt(t, indentationRelationshipParentLevel, actualRelationship, "should be parent level")
 }
 
 func TestIndentationManager_FindIndentation(t *testing.T) {
 	m := newIndentationManager()
-
+	m.push(0, yaml.NodeTypeSequenceBlockStyle)
 	tokens := []token.Token{
 		{Type: token.TypeIndentation, Value: "    "}, // Indentation level 4
 		{Type: token.TypeData, Value: "data"},
@@ -64,8 +133,7 @@ func TestIndentationManager_FindIndentation(t *testing.T) {
 	test.AssertEqualInt(t, indentationRelationshipChild, relationship, "Initial node with no prior indentation should be a sibling")
 	test.AssertEqualInt(t, 4, indentCount, "Initial indentation count should be 0")
 
-	m.push(4)
-
+	m.push(4, yaml.NodeTypeSequenceBlockStyle)
 	tokens = []token.Token{
 		{Type: token.TypeIndentation, Value: "    "}, // Same indentation level
 		{Type: token.TypeData, Value: "data"},
