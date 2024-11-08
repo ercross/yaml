@@ -85,8 +85,8 @@ func (m *indentationManager) push(newIndentationLevel int, nodeType yaml.NodeTyp
 
 	nin := newIndentation(newIndentationLevel, nodeType)
 
-	if len(m.stack) == 1 {
-		m.indentationLevelModuloFactor = newIndentationLevel - m.stack[0].level
+	if m.peek().nodeType.IsNestable() && newIndentationLevel > m.peek().level {
+		m.indentationLevelModuloFactor = newIndentationLevel - m.peek().level
 		m.stack = append(m.stack, nin)
 		return
 	}
