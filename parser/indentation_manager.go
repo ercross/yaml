@@ -65,7 +65,7 @@ func newIndentationManager() *indentationManager {
 	documentNodeIndentation := newIndentation(0, yaml.NodeTypeDocument)
 	return &indentationManager{
 		stack:                        []indentation{documentNodeIndentation},
-		indentationLevelModuloFactor: &documentNodeIndentation.level,
+		indentationLevelModuloFactor: nil,
 	}
 }
 
@@ -96,8 +96,9 @@ func (m *indentationManager) push(newIndentationLevel int, nodeType yaml.NodeTyp
 
 	nin := newIndentation(newIndentationLevel, nodeType)
 
-	if m.peek().nodeType.IsNestable() && newIndentationLevel > m.peek().level {
-		*m.indentationLevelModuloFactor = newIndentationLevel - m.peek().level
+	if m.peek().nodeType.IsNestable() && newIndentationLevel > m.peek().level && m.indentationLevelModuloFactor == nil {
+		moduloFactor := newIndentationLevel - m.peek().level
+		m.indentationLevelModuloFactor = &moduloFactor
 		m.stack = append(m.stack, nin)
 		return
 	}
