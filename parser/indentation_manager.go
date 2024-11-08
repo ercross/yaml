@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"errors"
+	"fmt"
 	"github.com/ercross/yaml"
 	"github.com/ercross/yaml/token"
 )
@@ -16,7 +18,10 @@ const (
 
 // indentationManager manages nested yaml.Node indentation,
 // ensuring that each yaml.Node nested under another
-// has the correct indentation with respect to previous yaml.Node indentation levels
+// has the correct indentation with respect to previous yaml.Node indentation levels.
+//
+// indentationManager.stack is expected to hold only nested nodes indentation,
+// one child at a time, never multiple children on the stack at a time
 type indentationManager struct {
 
 	// stack is designed to hold only exclusively nested nodes indentation,
@@ -62,70 +67,73 @@ func (m *indentationManager) pop() {
 }
 
 // peek returns the top indentation.level without removing it from indentationManager.stack
-func (m *indentationManager) peek() int {
+func (m *indentationManager) peek() indentation {
 	// indentationManager has been initialized with a default indentation level
 	// and pop can not remove the default indentation level,
 	// so this operation is safe
-	return m.stack[len(m.stack)-1].level
+	return m.stack[len(m.stack)-1]
 }
 
 // push a newIndentation onto indentationManager.stack
 //
+// push panics on attempt to push an unsupported indentation level onto stack.
+// Use indentationManager.determineRelationship to obtain the indentationRelationship
+// of incoming newIndentationLevel and ensure that it could be pushed onto the stack
+//
 // Check indentationManager.canPush for push rules
 func (m *indentationManager) push(newIndentationLevel int, nodeType yaml.NodeType) {
 
-	// set indentationManager.indentationLevelModuloFactor
+	nin := newIndentation(newIndentationLevel, nodeType)
+
 	if len(m.stack) == 1 {
 		m.indentationLevelModuloFactor = newIndentationLevel - m.stack[0].level
-	}
-	if len(m.stack) > 1 && newIndentationLevel%m.indentationLevelModuloFactor != 0 {
-		panic("can not push inconsistent newIndentationLevel. " +
-			"New newIndentationLevel should be a multiple or sub-multiple of indentationLevelModuloFactor")
+		m.stack = append(m.stack, nin)
+		return
 	}
 
-	nin := newIndentation(newIndentationLevel, nodeType)
-	if !m.canPush(nin) {
-		// if parser stack contains say [0, 2, 4, 6] and @newIndentationLevel = 4,
-		// then there's a need to unwind the stack by 2 levels such that the yaml.Node
-		// currently built in stack frame (F4) (i.e., newIndentationLevel 6) is popped
-		// and added as child to F3 (i.e., frame with newIndentationLevel 4).
-		// Then F3 (now containing f4) is popped and added as child to F2.
-		panic("can not push a lower newIndentationLevel. unwind stack and retry push")
+	if err := m.canPush(nin); err != nil {
+		panic(fmt.Errorf("stack push error: %w", err))
 	}
+
 	m.stack = append(m.stack, nin)
 }
 
 // canPush check that newIndentationLevel can be pushed onto indentationManager
-func (m *indentationManager) canPush(newIndentation indentation) bool {
+//
+// canPush RULE SUMMARY:
+//   - indentation.level can not be negative
+//   - can not push child node onto stack if top stack element is not nestable
+//   - can not push parent-level node onto stack:
+//     pop stack until top stack element.level == newIndentation.level, then try again
+//   - if indentationManager.indentationLevelModuloFactor has been set, the newIndentation.level
+//     must be a multiple of indentationManager.indentationLevelModuloFactor
+func (m *indentationManager) canPush(newIndentation indentation) error {
 
-	// existing indentation.level can not be greater than newIndentation.level
-	// because indentationManager.stack is expected to only hold exclusively nested nodes indentation,
-	// one child at a time, never multiple children on the stack at a time
-	if newIndentation.level < 0 || m.peek() > newIndentation.level {
-		// invalid indentation.level
-		return false
+	if newIndentation.level < 0 {
+		return errors.New("indentation level can not be negative")
 	}
 
-	if len(m.stack) == 1 && newIndentation.level != m.peek() {
-		// can not push a different indentation.level directly on yaml.DocumentNodeType.
-		// Indentations pushed directly on the document node must be at the same indentation.level
-		// with the document node
-		return false
+	// if parser stack contains say [0, 2, 4, 6] and @newIndentationLevel = 4,
+	// then there's a need to unwind the stack by 2 levels such that the yaml.Node
+	// currently built in stack frame (F4) (i.e., newIndentationLevel 6) is popped
+	// and added as child to F3 (i.e., frame with newIndentationLevel 4).
+	// Then F3 (now containing f4) is popped and added as child to F2.
+	if m.peek().level > newIndentation.level {
+		return errors.New("can not push a parent-level node directly on a child node: " +
+			"unwind stack and try again")
 	}
 
-	if len(m.stack) > 1 {
-		if newIndentation.level%m.indentationLevelModuloFactor != 0 {
-			return false
-		}
-
-		// if indentationLevel is different, then stack top indentation.nodeType must be nestable
-		if newIndentation.level != m.peek() && !m.stack[len(m.stack)-1].nodeType.IsNestable() {
-			return false
-		}
-		return true
+	if newIndentation.level > m.peek().level && !m.peek().nodeType.IsNestable() {
+		return errors.New("can not push a child node on non-nestable node: " +
+			"nodes pushed directly on non-nestable node must have equal indentation.level")
 	}
 
-	return true
+	if len(m.stack) >= 2 && newIndentation.level%m.indentationLevelModuloFactor != 0 {
+		return errors.New("inconsistent indentation level: " +
+			"indentation must be a multiple of indentationLevelModuloFactor")
+	}
+
+	return nil
 }
 
 // determineRelationship finds the hierarchical relationship between newIndentationLevel and existing indentations.
@@ -136,11 +144,11 @@ func (m *indentationManager) canPush(newIndentation indentation) bool {
 // that doesn't imply that indentationManager would allow pushing @newIndentationLevel.
 func (m *indentationManager) determineRelationship(newIndentationLevel int) (relationship indentationRelationship, ancestorPathLength int) {
 
-	if m.peek() < newIndentationLevel {
+	if m.peek().level < newIndentationLevel {
 		return indentationRelationshipChild, -1
 	}
 
-	if m.peek() == newIndentationLevel {
+	if m.peek().level == newIndentationLevel {
 		return indentationRelationSibling, -1
 	}
 
@@ -157,7 +165,7 @@ func (m *indentationManager) determineRelationship(newIndentationLevel int) (rel
 
 func (m *indentationManager) findIndentation(tokens []token.Token) (relationship indentationRelationship, indentationCount int) {
 
-	if m.peek() == 0 && tokens[0].Type == token.TypeData {
+	if m.peek().level == 0 && tokens[0].Type == token.TypeData {
 		return indentationRelationSibling, 0
 	}
 
