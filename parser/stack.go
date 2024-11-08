@@ -15,7 +15,7 @@ func newStack() *stack {
 
 func (s *stack) push(frame Frame) {
 	s.elements = append(s.elements, frame)
-	s.indentationManager.push(frame.AllowedIndentationLevel(), frame.NodeType())
+	s.indentationManager.push(frame.IndentationLevel(), frame.NodeType())
 }
 func (s *stack) pop() Frame {
 	if len(s.elements) == 0 {

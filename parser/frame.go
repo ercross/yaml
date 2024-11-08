@@ -23,7 +23,7 @@ type Frame interface {
 
 	// AllowedIndentationLevel is usually set by the indentation preceding the first token
 	// parsed into this Frame
-	AllowedIndentationLevel() int
+	IndentationLevel() int
 }
 
 type (
@@ -91,6 +91,6 @@ func (f *scalarFrame) Builder() yaml.NodeBuilder {
 	return f.builder
 }
 
-func (f *scalarFrame) AllowedIndentationLevel() int {
+func (f *scalarFrame) IndentationLevel() int {
 	return f.indentationLevel
 }
