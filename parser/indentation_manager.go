@@ -157,7 +157,7 @@ func (m *indentationManager) canPush(newIndentation indentation) error {
 // that doesn't imply that indentationManager would allow pushing @newIndentationLevel.
 func (m *indentationManager) determineRelationship(newIndentationLevel int) (relationship indentationRelationship, ancestorPathLength int) {
 
-	if m.peek().level < newIndentationLevel {
+	if m.peek().level < newIndentationLevel && m.peek().nodeType.IsNestable() {
 		return indentationRelationshipChild, -1
 	}
 
