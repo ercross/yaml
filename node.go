@@ -98,10 +98,6 @@ type (
 	}
 )
 
-type AbstractSyntaxTree struct {
-	documents []*DocumentNode
-}
-
 // IsNestable checks if NodeType can serve as a parent node to other child nodes.
 // In the context of YAML, only certain node types can nest other nodes.
 // Specifically, NodeTypeSequenceBlockStyle and NodeTypeMappingBlockStyle are nestable,
@@ -115,21 +111,7 @@ func (nt NodeType) IsNestable() bool {
 	}
 }
 
-func NewAbstractSyntaxTree() *AbstractSyntaxTree {
-	return &AbstractSyntaxTree{
-		documents: []*DocumentNode{
-			newDocumentNode(),
-		},
-	}
-}
-
-// addChild adds n to the yaml document currently being built
-func (ast *AbstractSyntaxTree) addChild(n Node) {
-	currentlyParsedDocumentIndex := len(ast.documents) - 1
-	ast.documents[currentlyParsedDocumentIndex].AddChild(n)
-}
-
-func newDocumentNode() *DocumentNode {
+func NewDocumentNode() *DocumentNode {
 	return &DocumentNode{}
 }
 
