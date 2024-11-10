@@ -15,8 +15,8 @@ var scalarLines = []string{
 	"scientific: 1.23e4\n",
 }
 
-var ExpectedScalarTokens = expectedScalarTokens
-var expectedScalarTokens = [][]token.Token{
+var ScalarTokens = scalarTokens
+var scalarTokens = [][]token.Token{
 	// strings: "Hello\, World\n"
 	{
 		token.New(token.TypeData, "string", 1, 1),

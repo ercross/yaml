@@ -19,14 +19,14 @@ func TestTokenizeLine(t *testing.T) {
 			t.Errorf("tokenizer error: %v", err)
 		}
 
-		if len(tokens) != len(testdata.ExpectedScalarTokens[i]) {
-			t.Errorf("expected token length %d but got %d on line %d", len(testdata.ExpectedScalarTokens[i]), len(tokens), i+1)
+		if len(tokens) != len(testdata.ScalarTokens[i]) {
+			t.Errorf("expected token length %d but got %d on line %d", len(testdata.ScalarTokens[i]), len(tokens), i+1)
 			continue
 		}
 
 		for j, tk := range tokens {
-			if testdata.ExpectedScalarTokens[i][j] != tk {
-				t.Errorf("Token at positon %d: expected %s, got %s", tk.Position, testdata.ExpectedScalarTokens[i][j], tk)
+			if testdata.ScalarTokens[i][j] != tk {
+				t.Errorf("Token at positon %d: expected %s, got %s", tk.Position, testdata.ScalarTokens[i][j], tk)
 			}
 		}
 	}

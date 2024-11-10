@@ -8,7 +8,7 @@ import (
 func TestScalarFrameParser(t *testing.T) {
 	defaultIndentationLevel := 0
 	nst := newNodeSyntaxTraverser(scalarNodeSyntax().head)
-	for _, scalarNodeTokens := range testdata.ExpectedScalarTokens {
+	for _, scalarNodeTokens := range testdata.ScalarTokens {
 		frame := newScalarFrame(defaultIndentationLevel, nst)
 		if err := frame.Build(scalarNodeTokens); err != nil {
 			t.Error(err)

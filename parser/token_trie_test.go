@@ -11,7 +11,7 @@ func TestScalarNodeFinder(t *testing.T) {
 
 	finder := newNodeTypeFinder()
 
-	for _, sampleScalar := range testdata.ExpectedScalarTokens {
+	for _, sampleScalar := range testdata.ScalarTokens {
 		finder.match(sampleScalar)
 		if finder.done && finder.nodeType() != yaml.NodeTypeScalar {
 			t.Errorf("expected node type %d, got %d", yaml.NodeTypeScalar, finder.nodeType())
