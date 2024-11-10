@@ -1,5 +1,7 @@
 package yaml
 
+import "github.com/ercross/yaml/token"
+
 type (
 	NodeType int8
 )
@@ -83,6 +85,8 @@ type (
 		SetValue(any)
 		ToNode() Node
 		SetKey(key string)
+		CurrentPosition() token.Location
+		SetCurrentPosition(position token.Location)
 	}
 )
 
@@ -93,8 +97,9 @@ type (
 	}
 
 	ScalarNode struct {
-		value any
-		key   string
+		value           any
+		key             string
+		currentPosition token.Location
 	}
 )
 
@@ -135,7 +140,7 @@ func (n *DocumentNode) AddChild(child Node) {
 	n.children = append(n.children, child)
 }
 
-func (n *DocumentNode) SetValue(interface{}) {
+func (n *DocumentNode) SetValue(_ interface{}) {
 	return
 }
 
@@ -172,4 +177,12 @@ func (n *ScalarNode) SetKey(key string) {
 
 func (n *ScalarNode) ToNode() Node {
 	return n
+}
+
+func (n *ScalarNode) SetCurrentPosition(position token.Location) {
+	n.currentPosition = position
+}
+
+func (n *ScalarNode) CurrentPosition() token.Location {
+	return n.currentPosition
 }

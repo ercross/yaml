@@ -21,7 +21,7 @@ type Frame interface {
 	// Builder building the underlying Node
 	Builder() yaml.NodeBuilder
 
-	// AllowedIndentationLevel is usually set by the indentation preceding the first token
+	// IndentationLevel is usually set by the indentation preceding the first token
 	// parsed into this Frame
 	IndentationLevel() int
 }
@@ -51,6 +51,7 @@ func (f *scalarFrame) Build(tokens []token.Token) error {
 	i := -1
 	for f.sequenceIterator.hasNext() && i < len(tokens) {
 		i++
+		f.builder.SetCurrentPosition(tokens[i].Position)
 		if tokens[i].Type == token.TypeIndentation {
 			if !hasVisitedAllowedIndentation && f.Builder().ToNode().Value() == nil {
 				hasVisitedAllowedIndentation = true
