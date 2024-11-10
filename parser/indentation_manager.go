@@ -125,7 +125,7 @@ func (m *indentationManager) canPush(newIndentation indentation) error {
 		return errNegativeIndentation
 	}
 
-	// if parser stack contains say [0, 2, 4, 6] and @newIndentationLevel = 4,
+	// if AstBuilder stack contains say [0, 2, 4, 6] and @newIndentationLevel = 4,
 	// then there's a need to unwind the stack by 2 levels such that the yaml.Node
 	// currently built in stack frame (F4) (i.e., newIndentationLevel 6) is popped
 	// and added as child to F3 (i.e., frame with newIndentationLevel 4).

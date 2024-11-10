@@ -109,7 +109,7 @@ func newNodeTypeFinder() *nodeTypeFinder {
 	}
 }
 
-// search for Frame using Depth-First search algorithm
+// search for yaml.NodeType on tokenTrie using Depth-First search algorithm
 func (f *nodeTypeFinder) match(tokens []token.Token) {
 
 	for _, next := range tokens {
