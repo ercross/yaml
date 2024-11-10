@@ -8,10 +8,12 @@ import (
 
 type (
 
-	// tokenTrie is basically a tree of tokens, each node in your tree represents a token in the YAML syntax.
-	// Each path from the root to a leaf represents a sequence of tokens that defines a specific node type in YAML
-	// (like mappings, sequences, or scalars).
-	// The leaves store the resulting node type that the parser will create based on that token sequence.
+	// tokenTrie is a trie that holds the syntax definition for all yaml.Node.
+	// Essentially tokenTrie is a nodeSyntax holder
+	//
+	// Each path from the root to a leaf represents the allowed sequence of tokens
+	// that defines the syntax a specific node type in the YAML specification.
+	// A leaf in the tokenTrie contains the yaml.NodeType
 	tokenTrie struct {
 		root *tokenTrieNode
 	}
@@ -24,9 +26,14 @@ type (
 		nodeType yaml.NodeType
 	}
 
+	// nodeTypeFinder is a tokenTrie traverser capable of finding which yaml.Node
+	// a sequence of token.Token attempts to represent
 	nodeTypeFinder struct {
 		position *tokenTrieNode
-		done     bool
+
+		// done indicates that nodeTypeFinder has concluded its finding.
+		// The result of its search can be found in position.nodeType
+		done bool
 	}
 )
 
@@ -37,7 +44,10 @@ type (
 		next      *nodeSyntaxToken
 	}
 
-	// nodeSyntax should not include leading token.TypeIndentation that comes before Node key
+	// nodeSyntax (implemented as a singly-LinkedList) is a sequence of tokens
+	// that defines the syntax a specific yaml.NodeType in the YAML specification.
+	//
+	// Note that nodeSyntax should not include token.TypeIndentation
 	nodeSyntax struct {
 		head *nodeSyntaxToken
 		size int

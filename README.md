@@ -21,3 +21,9 @@ Compatibility with specifications 1.1.x will come in future releases.
 
 ## Use cases
 Ideal for configuration management, data serialization, and parsing of structured data in YAML format.
+
+## Data structures used
+- Trie
+- Singly-LinkedList
+- Stack
+- Abstract Syntax tree
