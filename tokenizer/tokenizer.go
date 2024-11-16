@@ -59,7 +59,22 @@ func (t *complexTokenBuilder) startBuilding(breakOn rune, lineNumber int, column
 	t.startColumn = column
 }
 
-func (t *Tokenizer) Tokenize(line string, lineNumber int) (tokens []token.Token, err error) {
+func (t *Tokenizer) Run(in <-chan string, out chan<- []token.Token) error {
+
+	lineNumber := 0
+	for line := range in {
+		lineNumber++
+		tokens, err := t.tokenize(line, lineNumber)
+		if err != nil {
+			return err
+		}
+		out <- tokens
+	}
+
+	return nil
+}
+
+func (t *Tokenizer) tokenize(line string, lineNumber int) (tokens []token.Token, err error) {
 	if len(line) == 0 {
 		return tokens, nil
 	}
