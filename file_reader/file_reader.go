@@ -27,6 +27,8 @@ func ReadFromYamlFile(filename string, out chan<- string) error {
 	if err = scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
+
+	close(out)
 	return nil
 }
 

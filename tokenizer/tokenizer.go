@@ -70,7 +70,7 @@ func (t *Tokenizer) Run(in <-chan string, out chan<- []token.Token) error {
 		}
 		out <- tokens
 	}
-
+	close(out)
 	return nil
 }
 
