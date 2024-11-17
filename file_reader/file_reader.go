@@ -2,7 +2,9 @@ package reader
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -10,6 +12,8 @@ import (
 const maxFileSize = 100 * 1024 * 1024
 
 func ReadFromYamlFile(filename string, out chan<- string) error {
+	defer close(out)
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filename, err)
@@ -20,15 +24,30 @@ func ReadFromYamlFile(filename string, out chan<- string) error {
 		return fmt.Errorf("file failed validation %s: %w", filename, err)
 	}
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		out <- scanner.Text()
-	}
-	if err = scanner.Err(); err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+	reader := bufio.NewReader(file)
+	var line string
+	for {
+		line, err = reader.ReadString('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// this bufio.Reader rely on finding a delimiter ('\n' in this case) to determine the end of a line.
+				// If the file's last line does not end with a newline character, it will not be recognized as
+				// a complete line and may not return it.
+				// This behavior is consistent with POSIX standards, where lines are expected to be
+				// terminated with a newline.
+				//
+				// To ensure the last line is read even if it does not end with a newline,
+				// explicitly check for EOF and process any remaining data
+				if len(line) > 0 {
+					out <- line
+				}
+				break
+			}
+			return fmt.Errorf("failed to read line: %w", err)
+		}
+		out <- line
 	}
 
-	close(out)
 	return nil
 }
 

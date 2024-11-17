@@ -60,7 +60,7 @@ func (t *complexTokenBuilder) startBuilding(breakOn rune, lineNumber int, column
 }
 
 func (t *Tokenizer) Run(in <-chan string, out chan<- []token.Token) error {
-
+	defer close(out)
 	lineNumber := 0
 	for line := range in {
 		lineNumber++
@@ -68,9 +68,10 @@ func (t *Tokenizer) Run(in <-chan string, out chan<- []token.Token) error {
 		if err != nil {
 			return err
 		}
+
 		out <- tokens
 	}
-	close(out)
+
 	return nil
 }
 
@@ -85,6 +86,9 @@ func (t *Tokenizer) tokenize(line string, lineNumber int) (tokens []token.Token,
 	for len(rawLine) > 0 {
 
 		r, runeSize := utf8.DecodeRune(rawLine)
+		if r == utf8.RuneError && runeSize == 1 {
+			return nil, fmt.Errorf("invalid character '%c' at position %d:%d", rawLine[0], lineNumber, column)
+		}
 
 		if column == 1 {
 			if isWhiteSpaceCharacter(r) {
@@ -152,7 +156,7 @@ func (t *Tokenizer) tokenize(line string, lineNumber int) (tokens []token.Token,
 		if isData(r) {
 			startColumn := column
 			var b strings.Builder
-			for !isYAMLValidSymbol(r) {
+			for !isYAMLValidSymbol(r) && r != utf8.RuneError {
 				b.WriteRune(r)
 				rawLine = rawLine[runeSize:]
 				column++

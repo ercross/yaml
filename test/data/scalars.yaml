@@ -1,0 +1,9 @@
+string: "Hello\, World"
+integer: 12345
+float: 3.14159
+boolean_true: true
+boolean_false: false
+null_value: null
+single_quote_string: 'This is YAML!'
+escaped_chars: "Line with a \"quote\" inside"
+scientific: 1.23e4
