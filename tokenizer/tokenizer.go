@@ -92,7 +92,7 @@ func (t *Tokenizer) tokenize(line string, lineNumber int) (tokens []token.Token,
 
 		if column == 1 {
 			if isWhiteSpaceCharacter(r) {
-				if err = t.handleWhitespace(tokens, rawLine, &column, lineNumber); err != nil {
+				if err = t.handleWhitespace(&tokens, &rawLine, &column, lineNumber); err != nil {
 					return tokens, err
 				}
 				continue
@@ -221,6 +221,7 @@ func (t complexTokenBuilder) canEndBuilding(rawLine []byte) bool {
 
 func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]token.Token, error) {
 	column := 1
+	startColumn := column
 	allowedLength := 3
 	if len(rawLine) != allowedLength {
 		return nil, fmt.Errorf("document start [---] or end [...] tokens must be alone on a separate line")
@@ -233,7 +234,7 @@ func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]to
 			return nil, fmt.Errorf("unexpected rune %v", string(r))
 		}
 		t.complexTokenBuilder.builder.WriteString(string(r))
-		rawLine = rawLine[runeSize:]
+		rawLine = (rawLine)[runeSize:]
 		r, runeSize = utf8.DecodeRune(rawLine)
 		column++
 	}
@@ -242,13 +243,15 @@ func (t *Tokenizer) handleDocumentStarters(rawLine []byte, lineNumber int) ([]to
 	if r == token.CharDash {
 		tt = token.TypeDocumentStart
 	}
-	tokens := []token.Token{token.New(tt, t.complexTokenBuilder.builder.String(), lineNumber, column)}
+	tokens := []token.Token{token.New(tt, t.complexTokenBuilder.builder.String(), lineNumber, startColumn)}
 	t.complexTokenBuilder.endBuild()
 	return tokens, nil
 }
 
-func (t *Tokenizer) handleWhitespace(tokens []token.Token, rawLine []byte, column *int, lineNumber int) error {
-	r, runeSize := utf8.DecodeRune(rawLine)
+func (t *Tokenizer) handleWhitespace(tokens *[]token.Token, rawLine *[]byte, column *int, lineNumber int) error {
+	r, runeSize := utf8.DecodeRune(*rawLine)
+
+	// set indentation character if not set already
 	if t.indentationCharacter == 0 {
 		t.indentationCharacter = r
 	}
@@ -258,14 +261,15 @@ func (t *Tokenizer) handleWhitespace(tokens []token.Token, rawLine []byte, colum
 
 	// build indentation
 	var b strings.Builder
-	for r == token.CharWhitespace {
-		rawLine = rawLine[runeSize:]
+	startColumn := *column
+	for r == t.indentationCharacter {
+		*rawLine = (*rawLine)[runeSize:]
 		b.WriteString(" ")
 		*column++
-		r, runeSize = utf8.DecodeRune(rawLine)
+		r, runeSize = utf8.DecodeRune(*rawLine)
 	}
 	if b.Len() > 0 {
-		tokens = append(tokens, token.New(token.TypeIndentation, b.String(), lineNumber, *column))
+		*tokens = append(*tokens, token.New(token.TypeIndentation, b.String(), lineNumber, startColumn))
 	}
 
 	return nil

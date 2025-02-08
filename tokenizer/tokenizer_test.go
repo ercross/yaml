@@ -11,12 +11,16 @@ import (
 )
 
 func TestTokenizer(t *testing.T) {
+	pwd, _ := os.Getwd()
 
 	t.Run("Test tokenizer on scalar nodes file", func(t *testing.T) {
-		pwd, _ := os.Getwd()
-
 		scalarYamlFile := filepath.Dir(pwd) + "/test/data/scalars.yaml"
-		runTokenizerTest(t, scalarYamlFile, testdata.ScalarLineTokens)
+		runTokenizerTest(t, scalarYamlFile, testdata.ExpectedScalarLineTokens)
+	})
+
+	t.Run("Test tokenizer on multiline nodes file", func(t *testing.T) {
+		multilineStringsYamlFile := filepath.Dir(pwd) + "/test/data/multiline_strings.yaml"
+		runTokenizerTest(t, multilineStringsYamlFile, testdata.ExpectedMultilineTokens)
 	})
 }
 

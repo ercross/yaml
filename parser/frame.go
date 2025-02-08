@@ -68,7 +68,8 @@ func (f *scalarFrame) Build(tokens []token.Token) error {
 		}
 
 		if expected.tokenType != tokens[i].Type {
-			return fmt.Errorf("expected token type %d but got token type %d: %w", expected.tokenType, tokens[i].Type, errUnexpectedTokenType)
+			return fmt.Errorf("expected token type %d but got token type %d: %w",
+				expected.tokenType, tokens[i].Type, errUnexpectedTokenType)
 		}
 
 		// newline token is the last token in a scalar frame syntax

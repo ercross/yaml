@@ -2,7 +2,7 @@ package testdata
 
 import "github.com/ercross/yaml/token"
 
-var ScalarLineTokens = [][]token.Token{
+var ExpectedScalarLineTokens = [][]token.Token{
 	// strings: "Hello\, World\n"
 	{
 		token.New(token.TypeData, "string", 1, 1),

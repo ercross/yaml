@@ -1,0 +1,9 @@
+multiline1: |
+  This is a
+  multiline string
+  that spans several lines.
+
+multiline2: |
+  Another example of
+  a multiline string
+  with newlines retained.
